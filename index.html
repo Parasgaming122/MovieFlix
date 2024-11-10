@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MovieFlix TV</title>
+    <!-- Bootstrap CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --netflix-red: #E50914;
+            --focus-border: 3px solid #E50914;
+        }
+
+        body {
+            background-color: #141414;
+            color: white;
+            padding-top: 60px;
+        }
+
+        .navbar {
+            background-color: rgba(20, 20, 20, 0.95) !important;
+        }
+
+        .nav-item:focus, .nav-item:focus-within {
+            outline: var(--focus-border);
+            outline-offset: 2px;
+        }
+
+        .movie-card {
+            transition: transform 0.2s, outline 0.2s;
+            margin: 0 5px;
+            cursor: pointer;
+            position: relative;
+            width: 150px;
+            height: 225px;
+            flex-shrink: 0;
+        }
+
+        .movie-card:focus, .movie-card.focused {
+            transform: scale(1.1);
+            outline: var(--focus-border);
+            outline-offset: 2px;
+            z-index: 100;
+        }
+
+        .movie-card img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 4px;
+        }
+
+        .movie-title {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 8px;
+            border-bottom-left-radius: 4px;
+            border-bottom-right-radius: 4px;
+        }
+
+        .row-title {
+            color: #fff;
+            margin: 20px 0 10px 20px;
+        }
+
+        .movie-row {
+            display: flex;
+            overflow-x: auto;
+            padding: 20px 40px;
+            scroll-behavior: smooth;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
+        .movie-row::-webkit-scrollbar {
+            display: none; /* Chrome, Safari, Opera */
+        }
+
+        #searchBox {
+            background-color: #333;
+            color: white;
+            border: 1px solid #444;
+        }
+
+        #searchBox:focus {
+            outline: var(--focus-border);
+            outline-offset: 2px;
+        }
+
+        .search-container {
+            display: none;
+            padding: 20px;
+        }
+
+        .search-container.active {
+            display: block;
+        }
+
+        /* Navigation indicator */
+        .nav-indicator {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 10px 20px;
+            border-radius: 20px;
+            z-index: 1000;
+            display: none;
+        }
+
+        .nav-indicator.show {
+            display: block;
+        }
+
+        .movie-details .backdrop {
+            height: 100vh;
+            background-size: cover;
+            background-position: center;
+            position: relative;
+        }
+        
+        .movie-details .overlay {
+            background: linear-gradient(to right, rgba(0,0,0,0.9) 20%, rgba(0,0,0,0.6) 80%);
+            height: 100%;
+            width: 100%;
+            padding: 60px;
+        }
+        
+        .movie-details .content {
+            max-width: 800px;
+            padding-top: 100px;
+            position: relative;
+        }
+        
+        .movie-details h1 {
+            font-size: 3rem;
+            margin-bottom: 20px;
+        }
+        
+        .movie-details .meta {
+            margin-bottom: 20px;
+        }
+        
+        .movie-details .meta span {
+            margin-right: 20px;
+            color: #ccc;
+        }
+        
+        .movie-details .buttons {
+            margin-top: 30px;
+        }
+        
+        .movie-details .buttons .btn {
+            margin-right: 15px;
+        }
+
+        .row-container {
+            position: relative;
+        }
+
+        .scroll-button {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.7);
+            border: none;
+            color: white;
+            padding: 20px 10px;
+            cursor: pointer;
+            z-index: 10;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .row-container:hover .scroll-button {
+            opacity: 1;
+        }
+
+        .scroll-left {
+            left: 0;
+        }
+
+        .scroll-right {
+            right: 0;
+        }
+
+        .back-button {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+        }
+
+        .episode-item {
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .episode-item:hover {
+            background-color: rgba(255, 255, 255, 0.1) !important;
+        }
+
+        .seasons-section {
+            max-width: 800px;
+        }
+
+        #seasonSelect {
+            max-width: 200px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#" style="color: var(--netflix-red)">MOVIEFLIX</a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-item nav-link" href="index.html">Home</a>
+                <a class="nav-item nav-link" href="search.html">Search</a>
+                <a class="nav-item nav-link" href="#" data-action="favorites" tabindex="0">
+                    <i class="bi bi-heart"></i> Favorites
+                </a>
+                <a class="nav-item nav-link" href="#" data-action="settings" tabindex="0">
+                    <i class="bi bi-gear"></i> Settings
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Search Box -->
+    <div class="search-container" id="searchContainer">
+        <div class="container">
+            <input type="text" class="form-control" id="searchBox" placeholder="Search movies and TV shows...">
+            <div class="row mt-4" id="searchResults"></div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container-fluid" id="mainContent">
+        <!-- Continue Watching -->
+        <h2 class="row-title">Continue Watching</h2>
+        <div class="movie-row" data-row="continue">
+            <!-- Will be populated by JavaScript -->
+        </div>
+
+        <!-- Trending -->
+        <div class="row-container">
+            <h2 class="row-title">Trending Now</h2>
+            <button class="scroll-button scroll-left">‹</button>
+            <div class="movie-row" data-row="trending">
+                <!-- Will be populated by JavaScript -->
+            </div>
+            <button class="scroll-button scroll-right">›</button>
+        </div>
+
+        <!-- Latest Movies -->
+        <h2 class="row-title">Latest Movies</h2>
+        <div class="movie-row" data-row="movies">
+            <!-- Will be populated by JavaScript -->
+        </div>
+
+        <!-- Latest TV Shows -->
+        <h2 class="row-title">Latest TV Shows</h2>
+        <div class="movie-row" data-row="tv">
+            <!-- Will be populated by JavaScript -->
+        </div>
+    </div>
+
+    <!-- Navigation Indicator -->
+    <div class="nav-indicator" id="navIndicator">
+        Use arrow keys or remote to navigate
+    </div>
+
+    <!-- Bootstrap JS and dependencies -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
+    <script src="scripts.js"></script>
+
+
+</body>
+</html>

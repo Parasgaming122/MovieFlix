@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MovieFlix - Search</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #141414;
+            color: white;
+            padding-top: 60px;
+        }
+        .navbar {
+            background-color: rgba(20, 20, 20, 0.95) !important;
+        }
+        .movie-card {
+            cursor: pointer;
+            margin: 10px;
+            transition: all 0.2s ease-in-out;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+        .movie-card:hover {
+            transform: scale(1.05);
+        }
+        .movie-card.focused {
+            transform: scale(1.05);
+            outline: 3px solid #e50914;
+            box-shadow: 0 0 20px rgba(229, 9, 20, 0.5);
+        }
+        .movie-card img {
+            width: 100%;
+            height: auto;
+            border-radius: 4px;
+        }
+        .movie-title {
+            padding: 8px;
+            text-align: center;
+            font-weight: bold;
+            background-color: rgba(0, 0, 0, 0.7);
+        }
+        .search-container {
+            padding: 20px;
+        }
+        #searchBox {
+            background-color: #333;
+            color: white;
+            border: 1px solid #444;
+            padding: 15px;
+            font-size: 1.2em;
+        }
+        #searchBox:focus {
+            outline: 3px solid #e50914;
+            outline-offset: 2px;
+        }
+        .row-title {
+            margin: 20px 0 10px 20px;
+        }
+        .navigation-instructions {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            border-radius: 5px;
+            z-index: 1000;
+            transition: opacity 0.3s;
+        }
+        .navigation-instructions.hidden {
+            opacity: 0;
+        }
+        .navigation-key {
+            background-color: #333;
+            padding: 2px 8px;
+            border-radius: 3px;
+            margin: 0 3px;
+        }
+        .movie-info-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 10px;
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+        }
+        .movie-card:hover .movie-info-overlay,
+        .movie-card.focused .movie-info-overlay {
+            transform: translateY(0);
+        }
+        /* Loading spinner */
+        .loading-spinner {
+            text-align: center;
+            padding: 20px;
+            display: none;
+        }
+        .loading-spinner::after {
+            content: '';
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 3px solid #e50914;
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#" style="color: #e50914">MOVIEFLIX</a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-item nav-link" href="index.html">Home</a>
+                <a class="nav-item nav-link" href="search.html">Search</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-5">
+        <h1>Search Movies and TV Shows</h1>
+        <input type="text" id="searchBox" class="form-control" placeholder="Search..." />
+        <div class="loading-spinner" id="loadingSpinner"></div>
+        <div id="searchResults" class="row mt-4"></div>
+    </div>
+
+    <div class="navigation-instructions" id="navigationInstructions">
+        <span class="navigation-key">←</span>
+        <span class="navigation-key">↑</span>
+        <span class="navigation-key">↓</span>
+        <span class="navigation-key">→</span> to navigate &nbsp;
+        <span class="navigation-key">Enter</span> to select &nbsp;
+        <span class="navigation-key">S</span> to focus search &nbsp;
+        <span class="navigation-key">Esc</span> to blur
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.2/js/bootstrap.bundle.min.js"></script>
+    <script>
+        const TMDB_API_KEY = 'fb7bb23f03b6994dafc674c074d01761';
+        let currentFocusIndex = -1;
+        let movieCards = [];
+        let searchTimeout = null;
+        let isMouseNavigation = false;
+
+        const searchBox = document.getElementById('searchBox');
+        const loadingSpinner = document.getElementById('loadingSpinner');
+        const navigationInstructions = document.getElementById('navigationInstructions');
+
+        // Search handling with debounce
+        searchBox.addEventListener('input', function(event) {
+            clearTimeout(searchTimeout);
+            loadingSpinner.style.display = 'block';
+            
+            searchTimeout = setTimeout(() => {
+                handleSearch(event);
+            }, 500);
+        });
+
+        async function handleSearch(event) {
+            const query = event.target.value;
+            if (query.length >= 3) {
+                try {
+                    const results = await fetchFromTMDB('/search/multi', { query });
+                    displaySearchResults(results.results);
+                } catch (error) {
+                    console.error('Search error:', error);
+                }
+            } else {
+                document.getElementById('searchResults').innerHTML = '';
+            }
+            loadingSpinner.style.display = 'none';
+            updateFocusableElements();
+        }
+
+        async function fetchFromTMDB(endpoint, params = {}) {
+            const queryParams = new URLSearchParams({
+                api_key: TMDB_API_KEY,
+                ...params
+            });
+            const response = await fetch(`https://api.themoviedb.org/3${endpoint}?${queryParams}`);
+            return response.json();
+        }
+
+        function displaySearchResults(results) {
+            const container = document.getElementById('searchResults');
+            container.innerHTML = results.map(item => createMovieCard(item)).join('');
+            currentFocusIndex = -1;
+        }
+
+        function createMovieCard(item) {
+            const title = item.title || item.name;
+            const posterPath = item.poster_path ? `https://image.tmdb.org/t/p/w500${item.poster_path}` : 'placeholder.jpg';
+            const type = item.media_type;
+            const year = item.release_date ? new Date(item.release_date).getFullYear() : 
+                        (item.first_air_date ? new Date(item.first_air_date).getFullYear() : '');
+            const rating = item.vote_average ? `${Math.round(item.vote_average * 10)}%` : 'N/A';
+
+            return `
+                <div class="col-md-3">
+                    <div class="movie-card" 
+                         tabindex="0" 
+                         data-id="${item.id}" 
+                         data-type="${type}"
+                         onmouseover="handleMouseOver(this)"
+                         onmouseout="handleMouseOut(this)"
+                         onclick="openDetails(${item.id}, '${type}')">
+                        <img src="${posterPath}" alt="${title}" loading="lazy" />
+                        <div class="movie-title">${title}</div>
+                        <div class="movie-info-overlay">
+                            <div>Year: ${year}</div>
+                            <div>Rating: ${rating}</div>
+                            <div>Type: ${type.charAt(0).toUpperCase() + type.slice(1)}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function updateFocusableElements() {
+            movieCards = Array.from(document.querySelectorAll('.movie-card'));
+        }
+
+        function setFocus(index) {
+            if (!isMouseNavigation) {
+                movieCards.forEach(card => card.classList.remove('focused'));
+                
+                if (index >= 0 && index < movieCards.length) {
+                    currentFocusIndex = index;
+                    movieCards[index].classList.add('focused');
+                    movieCards[index].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        }
+
+        // Mouse event handlers
+        function handleMouseOver(element) {
+            isMouseNavigation = true;
+            movieCards.forEach(card => card.classList.remove('focused'));
+            element.classList.add('focused');
+            currentFocusIndex = movieCards.indexOf(element);
+        }
+
+        function handleMouseOut(element) {
+            if (isMouseNavigation) {
+                element.classList.remove('focused');
+            }
+        }
+
+        // Show/hide navigation instructions
+        let instructionsTimeout;
+        function showInstructions() {
+            clearTimeout(instructionsTimeout);
+            navigationInstructions.classList.remove('hidden');
+            instructionsTimeout = setTimeout(() => {
+                navigationInstructions.classList.add('hidden');
+            }, 3000);
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', function(event) {
+            isMouseNavigation = false;
+            showInstructions();
+            updateFocusableElements();
+            
+            const CARDS_PER_ROW = 4;
+            
+            switch(event.key) {
+                case 'ArrowRight':
+                    event.preventDefault();
+                    if (currentFocusIndex < movieCards.length - 1) {
+                        setFocus(currentFocusIndex + 1);
+                    }
+                    break;
+                    
+                case 'ArrowLeft':
+                    event.preventDefault();
+                    if (currentFocusIndex > 0) {
+                        setFocus(currentFocusIndex - 1);
+                    }
+                    break;
+                    
+                case 'ArrowUp':
+                    event.preventDefault();
+                    if (currentFocusIndex >= CARDS_PER_ROW) {
+                        setFocus(currentFocusIndex - CARDS_PER_ROW);
+                    }
+                    break;
+                    
+                case 'ArrowDown':
+                    event.preventDefault();
+                    if (currentFocusIndex + CARDS_PER_ROW < movieCards.length) {
+                        setFocus(currentFocusIndex + CARDS_PER_ROW);
+                    }
+                    break;
+                    
+                case 'Enter':
+                    event.preventDefault();
+                    if (currentFocusIndex >= 0) {
+                        const selectedCard = movieCards[currentFocusIndex];
+                        const id = selectedCard.dataset.id;
+                        const type = selectedCard.dataset.type;
+                        openDetails(id, type);
+                    }
+                    break;
+                    
+                case 's':
+                case 'S':
+                    event.preventDefault();
+                    searchBox.focus();
+                    break;
+
+                case 'Escape':
+                    event.preventDefault();
+                    searchBox.blur();
+                    break;
+            }
+        });
+
+        // Mouse movement handler
+        document.addEventListener('mousemove', () => {
+            isMouseNavigation = true;
+        });
+
+        function openDetails(id, type) {
+            window.location.href = `details.html?id=${id}&type=${type}`;
+        }
+
+        // Initial setup
+        window.addEventListener('load', () => {
+            updateFocusableElements();
+            if (movieCards.length > 0) {
+                setFocus(0);
+            }
+            showInstructions();
+        });
+
+        // Android TV detection
+        if (navigator.userAgent.toLowerCase().indexOf('android tv') > -1 || 
+            navigator.userAgent.toLowerCase().indexOf('smart-tv') > -1) {
+            document.body.classList.add('tv-mode');
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MovieFlix - Player</title>
+    
+    <!-- Plyr CSS -->
+    <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css">
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+        }
+
+        .video-container {
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+            position: relative;
+        }
+
+        /* Plyr customization */
+        .plyr {
+            height: 100%;
+            --plyr-color-main: #e50914;
+            --plyr-video-background: #000;
+            --plyr-menu-background: rgba(28, 28, 28, 0.9);
+            --plyr-menu-color: #fff;
+            --plyr-menu-border-radius: 4px;
+        }
+
+        .plyr--video {
+            height: 100%;
+        }
+
+        .plyr__control--overlaid {
+            background: rgba(229, 9, 20, 0.8);
+        }
+
+        .plyr__control--overlaid:hover {
+            background: rgba(229, 9, 20, 1);
+        }
+
+        .plyr--full-ui input[type=range] {
+            color: #e50914;
+        }
+
+        .plyr__control:hover {
+            background: rgba(229, 9, 20, 0.8);
+        }
+
+        /* Quality menu customization */
+        .plyr__menu__container {
+            background: var(--plyr-menu-background) !important;
+            padding: 8px !important;
+        }
+
+        .plyr__menu__container .plyr__control {
+            padding: 8px 12px !important;
+            font-size: 15px !important;
+        }
+
+        /* Focus styles for TV navigation */
+        .plyr__control:focus,
+        .plyr__control[aria-expanded=true] {
+            background-color: rgba(255, 255, 255, 0.2) !important;
+            box-shadow: 0 0 0 2px rgba(229, 9, 20, 0.8) !important;
+        }
+
+        /* Error display */
+        .error-display {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            text-align: center;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 4px;
+        }
+
+        /* Quality menu improvements */
+        .plyr__menu__container [data-plyr='quality'][value='1080'] {
+            font-weight: bold;
+            color: #e50914;
+        }
+
+        .plyr__menu__container [role='menuitem'][aria-checked='true']::after {
+            background: #e50914;
+        }
+
+        .plyr__menu__container [role='menuitem']:hover {
+            background: rgba(229, 9, 20, 0.5);
+        }
+
+        /* Subtitle styling */
+        .plyr__captions {
+    font-size: 20px !important;
+    background-color: rgba(0, 0, 0, 0.8);
+    text-shadow: none; /* Remove text shadow */
+    
+    /* Optional: Add a more subtle and customizable text outline */
+    -webkit-text-stroke: 1px rgba(0,0,0,0.7);
+    text-stroke: 1px rgba(0,0,0,0.7);
+}
+
+/* More advanced caption styling */
+.plyr__captions .plyr__caption {
+    background: rgba(0, 0, 0, 0.7);
+    padding: 0.25em 0.5em;
+    border-radius: 2px;
+    line-height: 1.5;
+    color: #fff;
+    font-weight: 500;
+    
+    /* Optional: Add a subtle box shadow for depth */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+/* Improve readability with background and outline */
+.plyr__captions .plyr__caption::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+    z-index: -1;
+    border-radius: 2px;
+}
+        /* Loading spinner */
+        .loading-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(229, 9, 20, 0.3);
+            border-top: 5px solid #e50914;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="video-container">
+        <video id="player" playsinline crossorigin>
+            <p>Your browser doesn't support HTML5 video playback.</p>
+        </video>
+        <div id="loading-overlay" class="loading-overlay" style="display: none;">
+            <div class="spinner"></div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const id = urlParams.get('id');
+        const type = urlParams.get('type');
+        const season = urlParams.get('s');
+        const episode = urlParams.get('e');
+
+        let player;
+        let hls;
+        let currentSources = [];
+        let currentSource = null;
+
+        // Fetch headers for API request
+        const fetchHeaders = {
+            'Referer': 'https://embed.su/',
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+            'Accept': '*/*'
+        };
+
+        async function initPlayer() {
+            const loadingOverlay = document.getElementById('loading-overlay');
+            loadingOverlay.style.display = 'flex';
+
+            try {
+                // Fetch video sources
+                let url = `https://vidsrc-api-js-six.vercel.app/vidsrc/${id}`;
+                if (type === 'tv' && season && episode) {
+                    url += `?s=${season}&e=${episode}`;
+                }
+                
+                const response = await fetch(url, { headers: fetchHeaders });
+                const data = await response.json();
+                
+                if (!data.sources || data.sources.length === 0) {
+                    throw new Error('No video sources found');
+                }
+
+                // Sort sources by quality (highest first)
+                currentSources = data.sources.sort((a, b) => {
+                    return parseInt(b.quality) - parseInt(a.quality);
+                });
+
+                // Filter and sort subtitles (English first)
+                const sortedSubtitles = data.subtitles.sort((a, b) => {
+                    if (a.lang.toLowerCase() === 'english') return -1;
+                    if (b.lang.toLowerCase() === 'english') return 1;
+                    return a.lang.localeCompare(b.lang);
+                });
+
+                const video = document.querySelector('#player');
+
+                // Initialize HLS first
+                if (Hls.isSupported()) {
+                    hls = new Hls({
+                        debug: false,
+                        enableWorker: true,
+                        lowLatencyMode: true,
+                        backBufferLength: 90
+                    });
+                }
+
+                // Prepare quality options
+                const qualityOptions = currentSources.map(source => source.quality);
+                currentSource = currentSources[0].url;
+
+                // Initialize Plyr with dynamic quality options
+                const defaultOptions = {
+                    controls: [
+                        'play-large',
+                        'restart',
+                        'rewind',
+                        'play',
+                        'fast-forward',
+                        'progress',
+                        'current-time',
+                        'duration',
+                        'mute',
+                        'volume',
+                        'captions',
+                        'settings',
+                        'airplay',
+                        'fullscreen'
+                    ],
+                    settings: ['captions', 'quality', 'speed'],
+                    keyboard: { focused: true, global: true },
+                    tooltips: { controls: true, seek: true },
+                    captions: { 
+                        active: true, 
+                        language: 'en', 
+                        update: true 
+                    },
+                    quality: {
+                        default: currentSources[0].quality,
+                        options: qualityOptions,
+                        forced: true
+                    },
+                    i18n: {
+                        qualityLabel: Object.fromEntries(
+                            qualityOptions.map(q => [q, `${q}p`])
+                        )
+                    }
+                };
+
+                // Create Plyr instance
+                player = new Plyr(video, defaultOptions);
+
+                // Add subtitles
+                if (sortedSubtitles.length > 0) {
+                    // Remove existing tracks
+                    while (video.firstChild) {
+                        video.removeChild(video.firstChild);
+                    }
+
+                    // Add new tracks
+                    sortedSubtitles.forEach((subtitle, index) => {
+                        const track = document.createElement('track');
+                        track.kind = 'subtitles';
+                        track.label = subtitle.lang;
+                        track.srclang = subtitle.lang.slice(0, 2).toLowerCase();
+                        track.src = subtitle.url;
+                        
+                        // Make first English track default
+                        if (subtitle.lang.toLowerCase() === 'english' && !video.querySelector('track[default]')) {
+                            track.default = true;
+                        }
+                        
+                        video.appendChild(track);
+                    });
+                }
+
+                // HLS Source Loading
+                if (Hls.isSupported()) {
+                    hls.loadSource(currentSource);
+                    hls.attachMedia(video);
+                    
+                    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                        loadingOverlay.style.display = 'none';
+                        player.play().catch(() => {
+                            console.log('Auto-play was prevented');
+                        });
+                    });
+
+                    // Error handling
+                    hls.on(Hls.Events.ERROR, (event, data) => {
+                        if (data.fatal) {
+                            switch (data.type) {
+                                case Hls.ErrorTypes.NETWORK_ERROR:
+                                    hls.startLoad();
+                                    break;
+                                case Hls.ErrorTypes.MEDIA_ERROR:
+                                    hls.recoverMediaError();
+                                    break;
+                                default:
+                                    initPlayer();
+                                    break;
+                            }
+                        }
+                    });
+                } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                    // For Safari & iOS
+                    video.src = currentSource;
+                    loadingOverlay.style.display = 'none';
+                }
+
+                // Quality change handler
+                player.on('qualitychange', (event) => {
+                    const newQuality = event.detail.quality;
+                    const sourceForQuality = currentSources.find(source => source.quality === newQuality);
+                    
+                    if (sourceForQuality && sourceForQuality.url !== currentSource) {
+                        const currentTime = player.currentTime;
+                        
+                        if (hls) {
+                            hls.loadSource(sourceForQuality.url);
+                            currentSource = sourceForQuality.url;
+                            
+                            hls.once(Hls.Events.MANIFEST_PARSED, () => {
+                                player.currentTime = currentTime;
+                            });
+                        } else {
+                            video.src = sourceForQuality.url;
+                            video.currentTime = currentTime;
+                        }
+                    }
+                });
+
+                // Setup keyboard controls
+                setupKeyboardControls(player);
+
+            } catch (error) {
+                loadingOverlay.style.display = 'none';
+                console.error('Player initialization failed:', error);
+                document.querySelector('.video-container').innerHTML = `
+                    <div class="error-display">
+                        <h2>Error loading video</h2>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+        function setupKeyboardControls(player) {
+            document.addEventListener('keydown', function(e) {
+                switch(e.key) {
+                    case 'ArrowRight':
+                        e.preventDefault();
+                        if (e.altKey) {
+                            player.forward(30);
+                        } else {
+                            player.forward(10);
+                        }
+                        break;
+
+                    case 'ArrowLeft':
+                        e.preventDefault();
+                        if (e.altKey) {
+                            player.rewind(30);
+                        } else {
+                            player.rewind(10);
+                        }
+                        break;
+
+                    case 'ArrowUp':
+                        e.preventDefault();
+                        player.increaseVolume(0.1);
+                        break;
+
+                    case 'ArrowDown':
+                        e.preventDefault();
+                        player.decreaseVolume(0.1);
+                        break;
+
+                    case ' ':
+                    case 'k':
+                        e.preventDefault();
+                        player.togglePlay();
+                        break;
+
+                    case 'f':
+                        e.preventDefault();
+                        player.toggleFullscreen();
+                        break;
+
+                    case 'm':
+                        e.preventDefault();
+                        player.toggleMute();
+                        break;
+
+                    case 'c':
+                        e.preventDefault();
+                        player.toggleCaptions();
+                        break;
+
+                    case '0':
+                    case '1':
+                    case '2':
+                    case '3':
+                    case '4':
+                    case '5':
+                    case '6':
+                    case '7':
+                    case '8':
+                    case '9':
+                        e.preventDefault();
+                        player.currentTime = player.duration * (parseInt(e.key) / 10);
+                        break;
+                }
+            });
+        }
+
+        // Initialize player when DOM is ready
+        document.addEventListener('DOMContentLoaded', initPlayer);
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', () => {
+            if (hls) {
+                hls.destroy();
+            }
+            if (player) {
+                player.destroy();
+            }
+        });
+    </script>
+</body>
+</html>

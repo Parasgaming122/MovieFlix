@@ -100,27 +100,24 @@
         }
 
         /* Subtitle styling */
-        .plyr__captions {
+/* Subtitle styling */
+.plyr__captions {
     font-size: 20px !important;
-    background-color: rgba(0, 0, 0, 0.8);
-    text-shadow: none; /* Remove text shadow */
-    
-    /* Optional: Add a more subtle and customizable text outline */
+    background-color: transparent; /* Change to transparent */
+    text-shadow: none;
     -webkit-text-stroke: 1px rgba(0,0,0,0.7);
     text-stroke: 1px rgba(0,0,0,0.7);
 }
 
 /* More advanced caption styling */
 .plyr__captions .plyr__caption {
-    background: rgba(0, 0, 0, 0.7);
+    background: transparent; /* Change to transparent */
     padding: 0.25em 0.5em;
     border-radius: 2px;
     line-height: 1.5;
     color: #fff;
     font-weight: 500;
-    
-    /* Optional: Add a subtle box shadow for depth */
-    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    box-shadow: none; /* Remove box shadow */
 }
 
 /* Improve readability with background and outline */
@@ -162,6 +159,13 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        /* Ensure full screen in landscape mode */
+@media screen and (orientation: landscape) {
+    .video-container {
+        width: 100vw;
+        height: 100vh;
+    }
+}
     </style>
 </head>
 <body>
@@ -459,6 +463,47 @@
                 player.destroy();
             }
         });
+        // ... existing code ...
+
+// Listen for orientation changes
+window.addEventListener('orientationchange', () => {
+    if (window.orientation === 90 || window.orientation === -90) {
+        // Landscape mode
+        document.querySelector('.video-container').style.width = '100vw';
+        document.querySelector('.video-container').style.height = '100vh';
+    } else {
+        // Portrait mode
+        document.querySelector('.video-container').style.width = '100vw';
+        document.querySelector('.video-container').style.height = '100vh';
+    }
+});
+
+// ... existing code ...
+
+function playEpisode(showId, season, episode) {
+    // Construct the API URL based on the selected season and episode
+    const apiUrl = `https://vidsrc-api-js-six.vercel.app/vidsrc/${showId}?s=${season}&e=${episode}`;
+    
+    fetch(apiUrl)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            // Check if the data is valid and contains the necessary information
+            if (data && data.videoUrl) {
+                window.location.href = data.videoUrl; // Redirect to the video URL
+            } else {
+                throw new Error('Video URL not found in response');
+            }
+        })
+        .catch(error => {
+            console.error('Error loading video:', error);
+            alert('Error loading video: ' + error.message);
+        });
+}
     </script>
 </body>
 </html>

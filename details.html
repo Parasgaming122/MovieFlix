@@ -380,16 +380,51 @@
         }
 
         function playContent() {
-            if (!details) {
-                console.error('No details available');
-                return;
-            }
-            window.location.href = `player.html?id=${id}&type=${type}`;
-        }
+    if (!details) {
+        console.error('No details available');
+        return;
+    }
+    
+    // Store the watched item in localStorage
+    const watchedItems = JSON.parse(localStorage.getItem('continueWatching')) || [];
+    
+    // Check if the item already exists
+    const existingIndex = watchedItems.findIndex(item => item.id === details.id);
+    
+    if (existingIndex !== -1) {
+        // If it exists, remove it from its current position
+        watchedItems.splice(existingIndex, 1);
+    }
+    
+    // Add the item to the front of the array
+    watchedItems.unshift({ id: details.id, type: type });
+    
+    // Update localStorage
+    localStorage.setItem('continueWatching', JSON.stringify(watchedItems));
+    
+    window.location.href = `player.html?id=${id}&type=${type}`;
+}
 
-        function playEpisode(showId, season, episode) {
-            window.location.href = `player.html?id=${showId}&type=tv&s=${season}&e=${episode}`;
-        }
+function playEpisode(showId, season, episode) {
+    // Store the watched episode in localStorage
+    const watchedItems = JSON.parse(localStorage.getItem('continueWatching')) || [];
+    
+    // Check if the item already exists
+    const existingIndex = watchedItems.findIndex(item => item.id === showId);
+    
+    if (existingIndex !== -1) {
+        // If it exists, remove it from its current position
+        watchedItems.splice(existingIndex, 1);
+    }
+    
+    // Add the item to the front of the array
+    watchedItems.unshift({ id: showId, type: 'tv' });
+    
+    // Update localStorage
+    localStorage.setItem('continueWatching', JSON.stringify(watchedItems));
+    
+    window.location.href = `player.html?id=${showId}&type=tv&s=${season}&e=${episode}`;
+}
 
         function toggleFavorite(id) {
             // Implementation for favorites will be added later

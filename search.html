@@ -212,10 +212,12 @@
                          onclick="openDetails(${item.id}, '${type}')">
                         <img src="${posterPath}" alt="${title}" loading="lazy" />
                         <div class="movie-title">${title}</div>
+                        
                         <div class="movie-info-overlay">
                             <div>Year: ${year}</div>
                             <div>Rating: ${rating}</div>
                             <div>Type: ${type.charAt(0).toUpperCase() + type.slice(1)}</div>
+                             <button onclick="toggleFavorite(${item.id}); event.stopPropagation();">Favorite</button>
                         </div>
                     </div>
                 </div>

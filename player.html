@@ -166,6 +166,20 @@
         height: 100vh;
     }
 }
+.next-episode-button {
+        width: 30px; /* Scale down the image */
+        height: 30px; /* Maintain aspect ratio */
+        cursor: pointer;
+        margin-left: 10px; /* Add some space from the previous control */
+        position: absolute; /* Position it above the controls */
+        bottom: 50px; /* Adjust this value to position it above the controls */
+        right: 20px; /* Align it to the right */
+        z-index: 1001; /* Ensure it appears above other elements */
+    }
+
+    .next-episode-button:hover {
+        opacity: 0.8; /* Add a hover effect */
+    }
     </style>
 </head>
 <body>
@@ -177,6 +191,16 @@
             <div class="spinner"></div>
         </div>
     </div>
+    <body>
+        <div class="video-container">
+            <video id="player" playsinline crossorigin>
+                <p>Your browser doesn't support HTML5 video playback.</p>
+            </video>
+            <div id="loading-overlay" class="loading-overlay" style="display: none;">
+                <div class="spinner"></div>
+            </div>
+        </div>
+    
 
     <!-- Scripts -->
     <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
@@ -381,7 +405,22 @@
                     </div>
                 `;
             }
+            if (type === 'tv' && season && episode) {
+            const nextEpisodeButton = document.createElement('img');
+            nextEpisodeButton.src = 'https://w7.pngwing.com/pngs/424/189/png-transparent-forward-music-next-play-rounded-song-play-rounded-icon-thumbnail.png';
+            nextEpisodeButton.className = 'next-episode-button';
+            nextEpisodeButton.alt = 'Next Episode';
+            nextEpisodeButton.onclick = () => {
+                const nextEpisodeUrl = `http://127.0.0.1:5500/player.html?id=${id}&type=${type}&s=${season}&e=${parseInt(episode) + 1}`;
+                window.location.href = nextEpisodeUrl;
+            };
+
+            // Append the image to the Plyr controls
+            const controlsContainer = document.querySelector('.plyr__controls');
+            controlsContainer.appendChild(nextEpisodeButton);
         }
+        }
+        
         function setupKeyboardControls(player) {
             document.addEventListener('keydown', function(e) {
                 switch(e.key) {

@@ -191,8 +191,36 @@ async function loadContent() {
         populateRow('trending', trending.results);
         populateRow('movies', movies.results);
         populateRow('tv', tvShows.results);
+
+        // Load continue watching items
+        loadContinueWatching();
     } catch (error) {
         console.error('Error loading content:', error);
+    }
+}
+
+async function loadContinueWatching() {
+    const watchedItems = JSON.parse(localStorage.getItem('continueWatching')) || [];
+    const continueWatchingRow = document.querySelector('[data-row="continue"]');
+
+    if (watchedItems.length > 0) {
+        const itemsHTML = await Promise.all(watchedItems.map(async (item) => {
+            const details = await fetchFromTMDB(`/${item.type}/${item.id}`);
+            const title = details.title || details.name; // Get the title
+            const posterPath = details.poster_path ? `https://image.tmdb.org/t/p/w500${details.poster_path}` : 'placeholder.jpg'; // Get the poster
+
+            return `
+                <div class="movie-card" 
+                     tabindex="0" 
+                     data-movie-id="${item.id}" 
+                     data-type="${item.type}"
+                     onclick="openDetails(${item.id}, '${item.type}')">
+                    <img src="${posterPath}" alt="${title} Poster" loading="lazy">
+                    <div class="movie-title">${title}</div>
+                </div>`;
+        }));
+
+        continueWatchingRow.innerHTML = itemsHTML.join('');
     }
 }
 
